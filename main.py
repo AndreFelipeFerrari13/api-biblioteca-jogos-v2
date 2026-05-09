@@ -3,7 +3,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import List
 
 app = FastAPI(
@@ -46,10 +46,11 @@ class JogoBase(BaseModel):
     nota: int = Field(..., ge=0, le=10)
     review: str = Field(..., min_length=1)
 
-    @validator("nome", "tipo", "review")
-    def sem_espacos_em_branco(cls, v, field):
+    @field_validator("nome", "tipo", "review")
+    @classmethod
+    def sem_espacos_em_branco(cls, v):
         if v.strip() == "":
-            raise ValueError(f"O campo '{field.name}' não pode ser apenas espaços em branco")
+            raise ValueError("Este campo não pode ser apenas espaços em branco")
         return v.strip()
 
 class JogoResponse(JogoBase):
@@ -200,7 +201,7 @@ def criar_jogo(jogo: JogoBase):
                     "mensagem": f"Já existe um jogo com o nome '{jogo.nome}'. Use PUT /jogos/{j['id']} para atualizar."
                 }
             )
-    item = jogo.dict()
+    item = jogo.model_dump()
     item["id"] = proximo_id
     proximo_id += 1
     banco_jogos.append(item)
@@ -229,7 +230,7 @@ def atualizar_jogo(id: int, jogo_atualizado: JogoBase):
                             "mensagem": f"Já existe outro jogo com o nome '{jogo_atualizado.nome}'."
                         }
                     )
-            item = jogo_atualizado.dict()
+            item = jogo_atualizado.model_dump()
             item["id"] = id
             banco_jogos[index] = item
             return item
